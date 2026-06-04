@@ -5,14 +5,14 @@
 <body>
    <h2>Demo Flask-SQLAlchemy dan SQLite</h2>   
    <table border="1">
-		<tr>
+     <tr>
          <th width=60>ID</th>
          <th width=200>Judul</th>
          <th width=170>Penulis</th>
          <th width=170>Penerbit</th>
          <th width=80>Ubah</th>
          <th width=80>Hapus</th>
-      </tr>
+     </tr>
       {% for buku in container %}
          <tr>
              <td>{{ buku[0] }}</td>
@@ -21,9 +21,13 @@
              <td>{{ buku[3] }}</td>
              <td><a href="{{ url_for('ubah', id=buku[0]) }}">Ubah</a></td>
              <td><a href="{{ url_for('hapus', id=buku[0]) }}">Hapus</a></td>
-          </tr>
+         </tr>
       {% endfor %}
-    </table>
-   <p><a href="{{ url_for('tambah') }}">Tambah Data</a></p>
+   </table>
+   <p>
+      <a href="{{ url_for('tambah') }}">Tambah Data</a> | 
+      <a href="{{ url_for('export_pdf') }}">Export PDF</a> |
+      <a href="{{ url_for('view_hash') }}">Lihat Tanda Tangan Digital</a>
+   </p>
 </body>
 </html>

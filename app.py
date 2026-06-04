@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import os
 import sqlite3
+from export_pdf import generate_buku_pdf, generate_hash
+import tempfile
 
 application = Flask(__name__)
 
-# Gunakan SQLite di /tmp untuk Railway
+# Database path untuk Railway
 DB_PATH = '/tmp/database.db'
 
 def get_db_connection():
@@ -53,8 +55,7 @@ def tambah():
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
-    else:
-        return render_template('tambah_form.html')
+    return render_template('tambah_form.html')
 
 @application.route('/ubah/<id>', methods=['GET', 'POST'])
 def ubah(id):
@@ -70,13 +71,13 @@ def ubah(id):
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
-    else:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('SELECT * FROM buku WHERE id=?', (id,))
-        buku = cur.fetchone()
-        conn.close()
-        return render_template('ubah_form.html', buku=buku)
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM buku WHERE id=?', (id,))
+    buku = cur.fetchone()
+    conn.close()
+    return render_template('ubah_form.html', buku=buku)
 
 @application.route('/hapus/<id>')
 def hapus(id):
@@ -86,6 +87,52 @@ def hapus(id):
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
+
+# ROUTE EXPORT PDF
+@application.route('/export-pdf')
+def export_pdf():
+    # Ambil semua data dari database
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM buku ORDER BY id')
+    data_buku = cur.fetchall()
+    conn.close()
+    
+    if not data_buku:
+        return "Tidak ada data untuk diexport", 400
+    
+    # Generate PDF
+    pdf_file = generate_buku_pdf(data_buku)
+    
+    # Kirim file PDF ke user
+    return send_file(
+        pdf_file,
+        as_attachment=True,
+        download_name="laporan_buku.pdf",
+        mimetype='application/pdf'
+    )
+
+# Route untuk melihat hash (tanda tangan digital)
+@application.route('/hash')
+def view_hash():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM buku ORDER BY id')
+    data_buku = cur.fetchall()
+    conn.close()
+    
+    hash_value = generate_hash(data_buku)
+    return f"""
+    <html>
+    <head><title>Digital Signature</title></head>
+    <body>
+        <h2>Tanda Tangan Digital</h2>
+        <p><b>Message Digest (SHA-256):</b></p>
+        <p><code style="font-size:16px; color:blue;">{hash_value}</code></p>
+        <p><a href="/">Kembali</a></p>
+    </body>
+    </html>
+    """
 
 @application.route('/health')
 def health():
