@@ -17,7 +17,7 @@ def get_db_connection():
     
     if IS_RAILWAY:
         try:
-            import psycopg2
+            import psycopg2_binary as psycopg2
             conn = psycopg2.connect(DATABASE_URL)
             return conn
         except Exception as e:
@@ -84,7 +84,7 @@ def index():
 def tambah():
     if request.method == 'POST':
         try:
-            id = request.form['id']
+            id_buku = request.form['id']
             judul = request.form['judul']
             penulis = request.form['penulis']
             penerbit = request.form['penerbit']
@@ -94,10 +94,10 @@ def tambah():
             
             if IS_RAILWAY:
                 cur.execute('INSERT INTO buku VALUES (%s, %s, %s, %s)',
-                           (id, judul, penulis, penerbit))
+                           (id_buku, judul, penulis, penerbit))
             else:
                 cur.execute('INSERT INTO buku VALUES (?, ?, ?, ?)',
-                           (id, judul, penulis, penerbit))
+                           (id_buku, judul, penulis, penerbit))
             
             conn.commit()
             cur.close()
@@ -167,6 +167,10 @@ def hapus(id):
     except Exception as e:
         return f"<h1>Error</h1><p>{str(e)}</p>", 500
 
+@application.route('/health')
+def health():
+    return {"status": "ok", "message": "Flask app is running"}
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8080))
     application.run(host='0.0.0.0', port=port, debug=False)
