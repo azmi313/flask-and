@@ -7,10 +7,12 @@ import json
 
 application = Flask(__name__)
 
-# Deteksi environment (Windows atau Railway)
+# Static folder configuration
+application.config['STATIC_FOLDER'] = 'static'
+
+# Deteksi environment
 IS_WINDOWS = os.name == 'nt'
 
-# Database path
 if IS_WINDOWS:
     DB_PATH = os.path.join(os.getcwd(), 'database.db')
 else:
@@ -18,7 +20,7 @@ else:
 
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Untuk akses kolom by nama
+    conn.row_factory = sqlite3.Row
     return conn
 
 def init_db():
@@ -44,20 +46,6 @@ def init_db():
 
 init_db()
 
-def get_data_hash():
-    """Generate SHA-256 hash dari semua data buku"""
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM buku ORDER BY id')
-    data = cur.fetchall()
-    conn.close()
-    
-    data_string = ""
-    for row in data:
-        data_string += f"{row['id']}{row['judul']}{row['penulis']}{row['penerbit']}"
-    
-    return hashlib.sha256(data_string.encode()).hexdigest()
-
 @application.route('/')
 def index():
     conn = get_db_connection()
@@ -65,17 +53,7 @@ def index():
     cur.execute('SELECT * FROM buku ORDER BY id')
     container = cur.fetchall()
     conn.close()
-    
-    hash_value = get_data_hash()
-    return render_template('index.html', container=container, hash_value=hash_value)
-
-@application.route('/api/hash')
-def api_hash():
-    """API untuk mendapatkan hash terbaru (untuk AJAX)"""
-    return jsonify({
-        'hash': get_data_hash(),
-        'timestamp': __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    })
+    return render_template('index.html', container=container)
 
 @application.route('/tambah', methods=['GET', 'POST'])
 def tambah():
@@ -142,11 +120,6 @@ def export_pdf():
         pdf_file,
         mimetype='application/pdf'
     )
-
-@application.route('/verify')
-def verify():
-    """Halaman verifikasi tanda tangan digital"""
-    return render_template('verify.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

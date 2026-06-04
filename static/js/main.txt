@@ -1,0 +1,68 @@
+// Konfirmasi hapus
+document.querySelectorAll('.btn-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        if (!confirm('⚠️ Yakin ingin menghapus data ini?\n\nData yang dihapus tidak dapat dikembalikan!')) {
+            e.preventDefault();
+        }
+    });
+});
+
+// Validasi form sebelum submit
+const forms = document.querySelectorAll('form');
+forms.forEach(form => {
+    form.addEventListener('submit', (e) => {
+        const inputs = form.querySelectorAll('input[required]');
+        let isValid = true;
+        
+        inputs.forEach(input => {
+            if (!input.value.trim()) {
+                input.style.borderColor = '#ef4444';
+                isValid = false;
+            } else {
+                input.style.borderColor = '#e2e8f0';
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            showAlert('Harap isi semua field yang diperlukan!', 'warning');
+        }
+    });
+});
+
+// Show alert function
+function showAlert(message, type) {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.innerHTML = `<span>⚠️</span><span>${message}</span>`;
+    
+    const container = document.querySelector('.container');
+    const header = document.querySelector('.header');
+    container.insertBefore(alert, header.nextSibling);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+// Animasi saat load
+document.addEventListener('DOMContentLoaded', () => {
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+        document.body.style.transition = 'opacity 0.5s';
+        document.body.style.opacity = '1';
+    }, 100);
+});
+
+// Tooltip helper
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showAlert('Berhasil disalin!', 'success');
+    });
+}
+
+// Auto focus pada input pertama
+const firstInput = document.querySelector('input:not([readonly])');
+if (firstInput) {
+    firstInput.focus();
+}

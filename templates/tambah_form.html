@@ -1,21 +1,44 @@
-<html>
+<!DOCTYPE html>
+<html lang="id">
 <head>
-   <title>Demo Flask-SQLAlchemy dan SQLite</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tambah Data Buku</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-   <h2>Tambah Data</h2>
-   
-   <form action="{{ url_for('tambah') }}" method="post">
-      ID:<br />
-      <input type="text" name="id" size="15" maxlength="4" /><br />
-      Judul buku:<br />
-      <input type="text" name="judul" size="50" maxlength="40" /><br />
-      Penulis:<br />
-      <input type="text" name="penulis" size="30" maxlength="25" /><br />
-      Penerbit:<br />
-      <input type="text" name="penerbit" size="30" maxlength="30" /><br />
-      <p><input type="submit" value="Simpan"></p>
-   </form>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Tambah Data Buku</h1>
+            <p>Isi form di bawah untuk menambahkan buku baru</p>
+        </div>
 
+        <div class="form-container">
+            <form action="{{ url_for('tambah') }}" method="post">
+                <div class="form-group">
+                    <label><i>🔖</i> ID Buku</label>
+                    <input type="text" name="id" placeholder="Contoh: B001" maxlength="4" required>
+                </div>
+                <div class="form-group">
+                    <label><i>📖</i> Judul Buku</label>
+                    <input type="text" name="judul" placeholder="Masukkan judul buku" maxlength="40" required>
+                </div>
+                <div class="form-group">
+                    <label><i>✍️</i> Penulis</label>
+                    <input type="text" name="penulis" placeholder="Masukkan nama penulis" maxlength="25" required>
+                </div>
+                <div class="form-group">
+                    <label><i>🏢</i> Penerbit</label>
+                    <input type="text" name="penerbit" placeholder="Masukkan nama penerbit" maxlength="30" required>
+                </div>
+                <div class="btn-group">
+                    <button type="submit" class="btn-primary">💾 Simpan Data</button>
+                    <a href="{{ url_for('index') }}" class="btn-secondary">↩️ Batal</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
