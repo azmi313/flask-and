@@ -8,23 +8,16 @@ application = Flask(__name__)
 IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('DATABASE_URL')
 DATABASE_URL = os.environ.get('DATABASE_URL') if IS_RAILWAY else None
 
-# Global connection cache
-_db_connection = None
-
 def get_db_connection():
     """Get database connection with error handling"""
-    global _db_connection
     
     if IS_RAILWAY:
-        try:
-            import psycopg2_binary as psycopg2
-            conn = psycopg2.connect(DATABASE_URL)
-            return conn
-        except Exception as e:
-            print(f"ERROR: PostgreSQL connection failed: {e}")
-            print(f"DATABASE_URL: {DATABASE_URL}")
-            raise
+        # Mode Production (Railway) - Pakai PostgreSQL
+        import psycopg2_binary as psycopg2
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
     else:
+        # Mode Development (Lokal) - Pakai SQLite
         db_path = os.path.join(os.getcwd(), 'database.db')
         conn = sqlite3.connect(db_path)
         return conn
@@ -61,7 +54,7 @@ def init_db():
     except Exception as e:
         print(f"⚠ Database initialization warning: {e}")
 
-# Initialize DB on app startup (for Gunicorn)
+# Initialize DB on app startup
 try:
     init_db()
 except:
@@ -74,7 +67,6 @@ def index():
         cur = conn.cursor()
         cur.execute('SELECT * FROM buku ORDER BY id')
         container = cur.fetchall()
-        cur.close()
         conn.close()
         return render_template('index.html', container=container)
     except Exception as e:
@@ -100,7 +92,6 @@ def tambah():
                            (id_buku, judul, penulis, penerbit))
             
             conn.commit()
-            cur.close()
             conn.close()
             return redirect(url_for('index'))
         except Exception as e:
@@ -127,7 +118,6 @@ def ubah(id):
                            (judul, penulis, penerbit, id))
             
             conn.commit()
-            cur.close()
             conn.close()
             return redirect(url_for('index'))
         except Exception as e:
@@ -143,7 +133,6 @@ def ubah(id):
                 cur.execute('SELECT * FROM buku WHERE id=?', (id,))
             
             buku = cur.fetchone()
-            cur.close()
             conn.close()
             return render_template('ubah_form.html', buku=buku)
         except Exception as e:
@@ -161,7 +150,6 @@ def hapus(id):
             cur.execute('DELETE FROM buku WHERE id=?', (id,))
         
         conn.commit()
-        cur.close()
         conn.close()
         return redirect(url_for('index'))
     except Exception as e:
