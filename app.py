@@ -1,12 +1,17 @@
 from flask import Flask, render_template, \
   request, redirect, url_for
-import pysqlite3 as sqlite3
+import sqlite3  # Ganti dari pysqlite3
 import os
 
 application = Flask(__name__)
 
-# Perbaiki path database
-application.config['DB_NAME'] = os.path.join(os.getcwd(), 'database.db')
+# Perbaiki path database untuk Railway
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # Di Railway, gunakan path sementara
+    application.config['DB_NAME'] = '/tmp/database.db'
+else:
+    # Local development
+    application.config['DB_NAME'] = os.path.join(os.getcwd(), 'database.db')
 
 conn = cursor = None
 
@@ -91,9 +96,9 @@ def init_db():
         ''')
         conn.commit()
         conn.close()
-        print("Database created successfully with pysqlite3!")
+        print("Database created successfully!")
 
 if __name__ == '__main__':
-    init_db()  # Inisialisasi database
+    init_db()
     port = int(os.environ.get('PORT', 5000))
     application.run(host='0.0.0.0', port=port, debug=False)
