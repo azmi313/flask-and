@@ -1,49 +1,64 @@
-from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, send_file
 import os
 import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from export_pdf import generate_buku_pdf
 import hashlib
-import json
 
 application = Flask(__name__)
 
-# Static folder configuration
-application.config['STATIC_FOLDER'] = 'static'
-
 # Deteksi environment
 IS_WINDOWS = os.name == 'nt'
+IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('DATABASE_URL')
 
-if IS_WINDOWS:
-    DB_PATH = os.path.join(os.getcwd(), 'database.db')
-else:
-    DB_PATH = '/tmp/database.db'
-
+# Database connection
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if IS_RAILWAY:
+        # PostgreSQL untuk Railway
+        DATABASE_URL = os.environ.get('DATABASE_URL')
+        conn = psycopg2.connect(DATABASE_URL)
+        return conn
+    else:
+        # SQLite untuk lokal
+        DB_PATH = os.path.join(os.getcwd(), 'database.db')
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
 
 def init_db():
-    if IS_WINDOWS:
-        db_dir = os.path.dirname(DB_PATH)
-        if db_dir and not os.path.exists(db_dir):
-            os.makedirs(db_dir)
-    
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS buku (
-            id TEXT PRIMARY KEY,
-            judul TEXT NOT NULL,
-            penulis TEXT NOT NULL,
-            penerbit TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    
+    if IS_RAILWAY:
+        # PostgreSQL query
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS buku (
+                id VARCHAR(4) PRIMARY KEY,
+                judul VARCHAR(40) NOT NULL,
+                penulis VARCHAR(25) NOT NULL,
+                penerbit VARCHAR(30) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print("✓ PostgreSQL database initialized on Railway!")
+    else:
+        # SQLite query
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS buku (
+                id TEXT PRIMARY KEY,
+                judul TEXT NOT NULL,
+                penulis TEXT NOT NULL,
+                penerbit TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print(f"✓ SQLite database initialized at: {os.path.join(os.getcwd(), 'database.db')}")
+    
     conn.commit()
     conn.close()
-    print(f"✓ Database initialized at: {DB_PATH}")
 
+# Initialize database
 init_db()
 
 @application.route('/')
@@ -51,7 +66,14 @@ def index():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('SELECT * FROM buku ORDER BY id')
-    container = cur.fetchall()
+    
+    if IS_RAILWAY:
+        rows = cur.fetchall()
+        # Convert PostgreSQL rows to list of tuples for compatibility
+        container = [(row[0], row[1], row[2], row[3]) for row in rows]
+    else:
+        container = cur.fetchall()
+    
     conn.close()
     return render_template('index.html', container=container)
 
@@ -65,8 +87,14 @@ def tambah():
         
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('INSERT INTO buku VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)', 
-                   (id_buku, judul, penulis, penerbit))
+        
+        if IS_RAILWAY:
+            cur.execute('INSERT INTO buku (id, judul, penulis, penerbit) VALUES (%s, %s, %s, %s)',
+                       (id_buku, judul, penulis, penerbit))
+        else:
+            cur.execute('INSERT INTO buku (id, judul, penulis, penerbit) VALUES (?, ?, ?, ?)',
+                       (id_buku, judul, penulis, penerbit))
+        
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
@@ -74,22 +102,31 @@ def tambah():
 
 @application.route('/ubah/<id>', methods=['GET', 'POST'])
 def ubah(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
     if request.method == 'POST':
         judul = request.form['judul']
         penulis = request.form['penulis']
         penerbit = request.form['penerbit']
         
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute('UPDATE buku SET judul=?, penulis=?, penerbit=? WHERE id=?',
-                   (judul, penulis, penerbit, id))
+        if IS_RAILWAY:
+            cur.execute('UPDATE buku SET judul=%s, penulis=%s, penerbit=%s WHERE id=%s',
+                       (judul, penulis, penerbit, id))
+        else:
+            cur.execute('UPDATE buku SET judul=?, penulis=?, penerbit=? WHERE id=?',
+                       (judul, penulis, penerbit, id))
+        
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
     
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM buku WHERE id=?', (id,))
+    # GET request - ambil data untuk ditampilkan
+    if IS_RAILWAY:
+        cur.execute('SELECT * FROM buku WHERE id=%s', (id,))
+    else:
+        cur.execute('SELECT * FROM buku WHERE id=?', (id,))
+    
     buku = cur.fetchone()
     conn.close()
     return render_template('ubah_form.html', buku=buku)
@@ -98,7 +135,12 @@ def ubah(id):
 def hapus(id):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('DELETE FROM buku WHERE id=?', (id,))
+    
+    if IS_RAILWAY:
+        cur.execute('DELETE FROM buku WHERE id=%s', (id,))
+    else:
+        cur.execute('DELETE FROM buku WHERE id=?', (id,))
+    
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
@@ -108,7 +150,13 @@ def export_pdf():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('SELECT * FROM buku ORDER BY id')
-    data_buku = cur.fetchall()
+    
+    if IS_RAILWAY:
+        rows = cur.fetchall()
+        data_buku = [(row[0], row[1], row[2], row[3]) for row in rows]
+    else:
+        data_buku = cur.fetchall()
+    
     conn.close()
     
     if not data_buku:
@@ -120,6 +168,10 @@ def export_pdf():
         pdf_file,
         mimetype='application/pdf'
     )
+
+@application.route('/health')
+def health():
+    return {"status": "ok", "message": "Flask app is running", "database": "PostgreSQL" if IS_RAILWAY else "SQLite"}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
