@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Dokumen | Digital Signature</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .verify-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        .verify-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #1a56db;
+            margin-bottom: 20px;
+        }
+
+        .hash-display {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 12px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 20px 0;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .status.valid {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status.invalid {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn-back {
+            background: #1a56db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+        }
+
+        .btn-back:hover {
+            background: #0e2f6e;
+        }
+    </style>
+</head>
+<body>
+    <div class="verify-card">
+        <div class="verify-icon">🔐</div>
+        <h2>Verifikasi Tanda Tangan Digital</h2>
+        <p>Scan QR Code pada dokumen atau masukkan hash untuk verifikasi</p>
+        
+        <div class="hash-display" id="hashDisplay">
+            Menunggu verifikasi...
+        </div>
+        
+        <div class="status" id="statusDisplay"></div>
+        
+        <a href="/" class="btn-back">← Kembali ke Beranda</a>
+    </div>
+
+    <script>
+        // Ambil hash dari URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const hash = urlParams.get('hash');
+        
+        if (hash) {
+            document.getElementById('hashDisplay').innerHTML = hash;
+            
+            // Verifikasi ke server (simulasi)
+            fetch('/api/hash')
+                .then(res => res.json())
+                .then(data => {
+                    const statusDiv = document.getElementById('statusDisplay');
+                    if (hash === data.hash) {
+                        statusDiv.innerHTML = '✅ DOKUMEN VALID - Tanda tangan digital cocok';
+                        statusDiv.className = 'status valid';
+                    } else {
+                        statusDiv.innerHTML = '❌ DOKUMEN TIDAK VALID - Data telah diubah!';
+                        statusDiv.className = 'status invalid';
+                    }
+                });
+        } else {
+            document.getElementById('hashDisplay').innerHTML = 'Tidak ada hash untuk diverifikasi';
+        }
+    </script>
+</body>
+</html>
